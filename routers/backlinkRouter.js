@@ -1,5 +1,6 @@
 const express = require('express');
-const backlinkController = require('../controllers/backlinkController')
+const backlinkController = require('../controllers/backlinkController');
+const passport = require('passport');
 
 const backlinkRouter = express.Router();
 
