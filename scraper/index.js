@@ -2,38 +2,54 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const URL = require('url').URL
 
-const targetUrl = 'http://camanoislandcoffee.com/what-the-heck-is-cascara/';
-const hostnameToFind = 'www.triplebarcoffee.com';
-
-axios.get(targetUrl)
-  .then(res => {
-    res.timeStamp = Date.now()
-    return res
-  })
-  .then(res => parse(hostnameToFind, res))
-  .catch(err => console.error(err))
-
-function parse(hostnameToFind, res) {
-  const { data, timeStamp } = res
-  const $ = cheerio.load(data);
-  $('a[href!=""]:not([href^=#],[href^="/"])').each(getLinkDetails)
-  
-  function getLinkDetails(i, ele) {
-    const { href, rel } = ele.attribs
-    const hostname = new URL(href).hostname.toLowerCase()
-    const isMatch = hostnameToFind.toLowerCase() === hostname
-    let link = null
-    if (isMatch) {
-      link = {
-        parentPage: targetUrl,
-        hostname: hostnameToFind,
-        linksTo: href,
-        anchorText: $(ele).text().trim(),
-        isNoFollow: rel === 'nofollow',
-        lastSeen: timeStamp
-      }
-      console.log(link)
+function scrapeAndParse(targetUrl, hostnamesToFind) {
+  const config = {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36',
     }
-    return link
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    axios.get(targetUrl, config)
+      .then(res => {
+        res.timeStamp = Date.now()
+        return res
+      })
+      .then(res => parse(res))
+      .then(links => resolve(links))
+      .catch(err => reject(err))
+  })
+
+  return promise
+
+  function parse(res) {
+    const { data, timeStamp } = res
+    const $ = cheerio.load(data);
+    const title = $("title").text()
+    const links = [];
+    $('a[href!=""]:not([href^=#],[href^="/"])').each(getLinkDetails)
+    return links
+
+    function getLinkDetails(i, ele) {
+      const { href, rel } = ele.attribs
+      const linkHostname = new URL(href).hostname.toLowerCase()
+      const isMatch = hostnamesToFind
+        .map(hostname => hostname.toLowerCase())
+        .includes(linkHostname)
+      if (isMatch) {
+        link = {
+          parentPageUrl: targetUrl,
+          parentPageTitle: title,
+          hostname: linkHostname,
+          linksTo: href,
+          anchorText: $(ele).text().trim(),
+          isNoFollow: rel === 'nofollow',
+          lastSeen: timeStamp,
+        };
+        links.push(link);
+      }
+    }
   }
 }
+
+module.exports = scrapeAndParse
