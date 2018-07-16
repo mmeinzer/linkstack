@@ -37,7 +37,7 @@ function scrapeAndParse(targetUrl, hostnamesToFind) {
         .map(hostname => hostname.toLowerCase())
         .includes(linkHostname)
       if (isMatch) {
-        link = {
+        const link = {
           parentPageUrl: targetUrl,
           parentPageTitle: title,
           hostname: linkHostname,
