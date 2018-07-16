@@ -17,18 +17,26 @@ function scrapeAndParse(targetUrl, hostnamesToFind) {
       })
       .then(res => parse(res))
       .then(links => resolve(links))
-      .catch(err => reject(err))
+      .catch(err => {
+        return reject(err)
+      })
   })
 
   return promise
 
   function parse(res) {
-    const { data, timeStamp } = res
+    const { status, data, timeStamp } = res;
     const $ = cheerio.load(data);
-    const title = $("title").text()
+    const title = $("title").text();
     const links = [];
-    $('a[href!=""]:not([href^=#],[href^="/"])').each(getLinkDetails)
-    return links
+    $('a[href!=""]:not([href^=#],[href^="/"])').each(getLinkDetails);
+    const page = {
+      url: targetUrl,
+      dateScraped: timeStamp,
+      doFollowLinks: links.reduce(makeCountLinksReducer(), 0),
+      noFollowLinks: links.reduce(makeCountLinksReducer({type: 'nofollow'}), 0),
+    };
+    return {page, links}
 
     function getLinkDetails(i, ele) {
       const { href, rel } = ele.attribs
@@ -45,11 +53,28 @@ function scrapeAndParse(targetUrl, hostnamesToFind) {
           anchorText: $(ele).text().trim(),
           isNoFollow: rel === 'nofollow',
           lastSeen: timeStamp,
+          status
         };
         links.push(link);
       }
     }
   }
+}
+
+function makeCountLinksReducer(config) {
+  let countFollow = true;
+  if (config) {
+    countFollow = config.type !== 'nofollow'
+  }
+  function countLinks(tot, curr) {
+    if (!curr.isNoFollow && countFollow) {
+      tot++;
+    } else if (curr.isNoFollow && !countFollow) {
+      tot++;
+    }
+    return tot
+  }
+  return countLinks
 }
 
 module.exports = scrapeAndParse
