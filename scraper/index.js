@@ -9,7 +9,7 @@ function scrapeAndParse(targetUrl, hostnamesToFind) {
     }
   }
 
-  const promise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     axios.get(targetUrl, config)
       .then(res => {
         res.timeStamp = Date.now()
@@ -21,9 +21,7 @@ function scrapeAndParse(targetUrl, hostnamesToFind) {
         return reject(err)
       })
   })
-
-  return promise
-
+  
   function parse(res) {
     const { status, data, timeStamp } = res;
     const $ = cheerio.load(data);
